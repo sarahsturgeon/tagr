@@ -1,0 +1,2 @@
+# tagr
+Easy git tagging!
