@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-TAGGER="$(cd "$(dirname "$0")" && pwd)/tagger.sh"
+TAGGER="$(cd "$(dirname "$0")" && pwd)/tagr.sh"
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 
