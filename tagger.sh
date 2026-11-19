@@ -16,22 +16,28 @@ case "$1" in
   ;;
 esac
 
-# Check if we're using v prefix (and default to it)
-LATEST_TAG=$(git describe --abbrev=0 --tags)
-LATEST_TAG=${LATEST_TAG:-'v0.0.0'}
-PREFIX=${LATEST_TAG:0:1}
-if [[ "$PREFIX" != "v" ]]; then
-    PREFIX=""
+if ! git rev-parse --git-dir >/dev/null 2>&1; then
+  echo "Error - not a git repository"
+  exit 1
 fi
 
-# Get the latest tag
-VERSION=$(git describe --match "$PREFIX[0-9]*" --abbrev=0 --tags)
+EXISTING_TAG=$(git tag --points-at HEAD | head -n 1)
+if [[ -n "$EXISTING_TAG" ]]; then
+  echo "Current commit already has a tag: $EXISTING_TAG"
+  exit 0
+fi
 
-# If no tag, give VERSION a default value of 0
-VERSION=${VERSION:-'v0.0.0'}
+# Highest version tag, preferring the v prefix (and defaulting to it)
+VERSION=$(git tag --list "v[0-9]*" --sort=-v:refname | head -n 1)
+VERSION=${VERSION:-$(git tag --list "[0-9]*" --sort=-v:refname | head -n 1)}
+VERSION=${VERSION:-"v0.0.0"}
 
-# Remove the prefix
-CLEANED_VERSION=(${VERSION//$PREFIX/})
+PREFIX=""
+if [[ "$VERSION" == v* ]]; then
+  PREFIX="v"
+fi
+
+CLEANED_VERSION=${VERSION#"$PREFIX"}
 
 MAJOR="${CLEANED_VERSION%%.*}"
 CLEANED_VERSION="${CLEANED_VERSION#*.}"
@@ -59,13 +65,9 @@ esac
 NEW_TAG="$PREFIX$MAJOR.$MINOR.$PATCH"
 echo "Last tag version '$VERSION'. New tag will be: '$NEW_TAG'"
 
-# Get current hash and see if it already has a tag
-GIT_COMMIT=$(git rev-parse HEAD)
-NEEDS_TAG=$(git describe --contains "$GIT_COMMIT" 2>/dev/null)
-
-if [[ -z "$NEEDS_TAG" ]]; then
-  git tag -a $NEW_TAG --sign
-  echo "Tagged with $NEW_TAG"
-else
-  echo "Current commit already has a tag: $VERSION"
+if ! git tag -a "$NEW_TAG"; then
+  echo "Error - failed to create tag $NEW_TAG"
+  exit 1
 fi
+
+echo "Tagged with $NEW_TAG"
